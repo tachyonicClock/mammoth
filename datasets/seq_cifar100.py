@@ -75,31 +75,37 @@ class SequentialCIFAR100(ContinualDataset):
              transforms.Normalize((0.5071, 0.4867, 0.4408),
                                   (0.2675, 0.2565, 0.2761))])
 
-    def get_examples_number(self):
-        train_dataset = MyCIFAR100(base_path() + 'CIFAR10', train=True,
-                                  download=True)
-        return len(train_dataset.data)
+    def __init__(self, args):
+        super().__init__(args)
 
-    def get_data_loaders(self):
         transform = self.TRANSFORM
 
         test_transform = transforms.Compose(
             [transforms.ToTensor(), self.get_normalization_transform()])
 
-        train_dataset = MyCIFAR100(base_path() + 'CIFAR100', train=True,
+        train_dataset = MyCIFAR100(base_path(), train=True,
                                   download=True, transform=transform)
         if self.args.validation:
             train_dataset, test_dataset = get_train_val(train_dataset,
                                                     test_transform, self.NAME)
         else:
-            test_dataset = TCIFAR100(base_path() + 'CIFAR100',train=False,
+            test_dataset = TCIFAR100(base_path(),train=False,
                                    download=True, transform=test_transform)
 
         # Support shuffling the task composition
         train_dataset.targets = [self.substitution_table[y] for y in train_dataset.targets]
         test_dataset.targets  = [self.substitution_table[y] for y in test_dataset.targets]
 
-        train, test = store_masked_loaders(train_dataset, test_dataset, self)
+        self.train_dataset = train_dataset
+        self.test_dataset = test_dataset
+
+    def get_examples_number(self):
+        train_dataset = MyCIFAR100(base_path(), train=True,
+                                  download=True)
+        return len(train_dataset.data)
+
+    def get_data_loaders(self):
+        train, test = store_masked_loaders(self.train_dataset, self.test_dataset, self)
         return train, test
 
     @staticmethod

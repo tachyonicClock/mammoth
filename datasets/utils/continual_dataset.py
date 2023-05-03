@@ -9,7 +9,7 @@ from typing import List, Tuple
 import numpy as np
 import torch.nn as nn
 import torch.optim
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader, Dataset, Subset
 
 
 class ContinualDataset:
@@ -120,15 +120,12 @@ def store_masked_loaders(train_dataset: Dataset, test_dataset: Dataset,
     test_mask = np.logical_and(np.array(test_dataset.targets) >= setting.i,
                                np.array(test_dataset.targets) < setting.i + setting.N_CLASSES_PER_TASK)
 
-    train_dataset.data = train_dataset.data[train_mask]
-    test_dataset.data = test_dataset.data[test_mask]
+    task_train_subset = Subset(train_dataset, np.where(train_mask)[0])
+    task_test_subset = Subset(test_dataset, np.where(test_mask)[0])
 
-    train_dataset.targets = np.array(train_dataset.targets)[train_mask]
-    test_dataset.targets = np.array(test_dataset.targets)[test_mask]
-
-    train_loader = DataLoader(train_dataset,
+    train_loader = DataLoader(task_train_subset,
                               batch_size=setting.args.batch_size, shuffle=True, num_workers=4)
-    test_loader = DataLoader(test_dataset,
+    test_loader = DataLoader(task_test_subset,
                              batch_size=setting.args.batch_size, shuffle=False, num_workers=4)
     setting.test_loaders.append(test_loader)
     setting.train_loader = train_loader
