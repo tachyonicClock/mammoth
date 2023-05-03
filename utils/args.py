@@ -3,7 +3,7 @@
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 
-from argparse import ArgumentParser
+from argparse import ArgumentParser, BooleanOptionalAction
 from datasets import NAMES as DATASET_NAMES
 from models import get_all_models
 
@@ -36,6 +36,9 @@ def add_experiment_args(parser: ArgumentParser) -> None:
 
     parser.add_argument('--distributed', type=str, default='no', choices=['no', 'dp', 'ddp'])
 
+    parser.add_argument('--shuffle-classes', type=bool, default=False, action=BooleanOptionalAction,
+                        help='Should the classes be shuffled? Randomizing the composition of the classes.')
+
 
 def add_management_args(parser: ArgumentParser) -> None:
     parser.add_argument('--seed', type=int, default=None,
@@ -52,7 +55,7 @@ def add_management_args(parser: ArgumentParser) -> None:
                         help='disable additional metrics')
     parser.add_argument('--debug_mode', type=int, default=0, help='Run only a few forward steps per epoch')
     parser.add_argument('--nowand', default=0, choices=[0, 1], type=int, help='Inhibit wandb logging')
-    parser.add_argument('--wandb_entity', type=str, default='regaz', help='Wandb entity')
+    parser.add_argument('--wandb_entity', type=str, default='tachyonicclock', help='Wandb entity')
     parser.add_argument('--wandb_project', type=str, default='mammoth', help='Wandb project name')
 
 

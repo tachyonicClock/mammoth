@@ -4,7 +4,7 @@
 # LICENSE file in the root directory of this source tree.
 
 from argparse import Namespace
-from typing import Tuple
+from typing import List, Tuple
 
 import numpy as np
 import torch.nn as nn
@@ -30,6 +30,15 @@ class ContinualDataset:
         self.test_loaders = []
         self.i = 0
         self.args = args
+
+        # Substitute targets to shuffle class ordering
+        print(self.args)
+        self.substitution_table = np.arange(self.N_CLASSES_PER_TASK * self.N_TASKS)
+
+        if args.shuffle_classes:
+            np.random.shuffle(self.substitution_table)
+
+        print(f"{self.NAME} using substitution table {self.substitution_table} ")
 
         if not all((self.NAME, self.SETTING, self.N_CLASSES_PER_TASK, self.N_TASKS)):
             raise NotImplementedError('The dataset must be initialized with all the required fields.')

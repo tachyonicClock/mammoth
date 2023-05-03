@@ -88,6 +88,10 @@ class SequentialCIFAR10(ContinualDataset):
             test_dataset = TCIFAR10(base_path() + 'CIFAR10',train=False,
                                    download=True, transform=test_transform)
 
+        # Support shuffling the task composition
+        train_dataset.targets = [self.substitution_table[y] for y in train_dataset.targets]
+        test_dataset.targets  = [self.substitution_table[y] for y in test_dataset.targets]
+
         train, test = store_masked_loaders(train_dataset, test_dataset, self)
         return train, test
 
