@@ -120,8 +120,15 @@ def store_masked_loaders(train_dataset: Dataset, test_dataset: Dataset,
     test_mask = np.logical_and(np.array(test_dataset.targets) >= setting.i,
                                np.array(test_dataset.targets) < setting.i + setting.N_CLASSES_PER_TASK)
 
-    task_train_subset = Subset(train_dataset, np.where(train_mask)[0])
-    task_test_subset = Subset(test_dataset, np.where(test_mask)[0])
+    train_idx = np.where(train_mask)[0]
+    task_train_subset = Subset(train_dataset, train_idx)
+    task_train_subset.data = train_dataset.data[train_mask]
+    task_train_subset.targets = np.array(train_dataset.targets)[train_mask]
+
+    test_idx = np.where(test_mask)[0]
+    task_test_subset = Subset(test_dataset, test_idx)
+    task_test_subset.data = test_dataset.data[test_mask]
+    task_test_subset.targets = np.array(test_dataset.targets)[test_mask]
 
     train_loader = DataLoader(task_train_subset,
                               batch_size=setting.args.batch_size, shuffle=True, num_workers=4)
