@@ -19,7 +19,7 @@ def xavier(m: nn.Module) -> None:
         >>> net = nn.Sequential(nn.Linear(10, 10), nn.ReLU())
         >>> net.apply(xavier)
     """
-    if m.__class__.__name__ == 'Linear':
+    if m.__class__.__name__ == "Linear":
         fan_in = m.weight.data.size(1)
         fan_out = m.weight.data.size(0)
         std = 1.0 * math.sqrt(2.0 / (fan_in + fan_out))
@@ -42,12 +42,12 @@ def num_flat_features(x: torch.Tensor) -> int:
         num_features *= ff
     return num_features
 
-class MammothBackbone(nn.Module):
 
+class MammothBackbone(nn.Module):
     def __init__(self, **kwargs) -> None:
         super(MammothBackbone, self).__init__()
 
-    def forward(self, x: torch.Tensor, returnt='out') -> torch.Tensor:
+    def forward(self, x: torch.Tensor, returnt="out") -> torch.Tensor:
         """
         Compute a forward pass.
         :param x: input tensor (batch_size, *input_shape)
@@ -57,7 +57,7 @@ class MammothBackbone(nn.Module):
         raise NotImplementedError
 
     def features(self, x: torch.Tensor) -> torch.Tensor:
-        return self.forward(x, returnt='features')
+        return self.forward(x, returnt="features")
 
     def get_params(self) -> torch.Tensor:
         """
@@ -77,8 +77,9 @@ class MammothBackbone(nn.Module):
         assert new_params.size() == self.get_params().size()
         progress = 0
         for pp in list(self.parameters()):
-            cand_params = new_params[progress: progress +
-                torch.tensor(pp.size()).prod()].view(pp.size())
+            cand_params = new_params[
+                progress : progress + torch.tensor(pp.size()).prod()
+            ].view(pp.size())
             progress += torch.tensor(pp.size()).prod()
             pp.data = cand_params
 

@@ -8,6 +8,7 @@ import torch
 import numpy as np
 import os
 
+
 def get_device() -> torch.device:
     """
     Returns the GPU device if available else CPU.
@@ -19,13 +20,14 @@ def base_path() -> str:
     """
     Returns the base bath where to log accuracies and tensorboard data.
     """
-    return './data/'
+    return "./data/"
+
 
 def base_path_dataset() -> str:
     """
     Returns the base bath where to log accuracies and tensorboard data.
     """
-    return os.environ.get('TFDS_DATA_DIR', '/tmp/mammoth_datasets/')
+    return os.environ.get("TFDS_DATA_DIR", "/tmp/mammoth_datasets/")
 
 
 def set_random_seed(seed: int) -> None:

@@ -11,21 +11,24 @@ from utils.args import add_management_args, add_experiment_args, ArgumentParser
 
 
 def get_parser() -> ArgumentParser:
-    parser = ArgumentParser(description='Continual Learning Through'
-                                        ' Synaptic Intelligence.')
+    parser = ArgumentParser(
+        description="Continual Learning Through" " Synaptic Intelligence."
+    )
     add_management_args(parser)
     add_experiment_args(parser)
-    parser.add_argument('--c', type=float, required=True,
-                        help='surrogate loss weight parameter c')
-    parser.add_argument('--xi', type=float, required=True,
-                        help='xi parameter for EWC online')
+    parser.add_argument(
+        "--c", type=float, required=True, help="surrogate loss weight parameter c"
+    )
+    parser.add_argument(
+        "--xi", type=float, required=True, help="xi parameter for EWC online"
+    )
 
     return parser
 
 
 class SI(ContinualModel):
-    NAME = 'si'
-    COMPATIBILITY = ['class-il', 'domain-il', 'task-il']
+    NAME = "si"
+    COMPATIBILITY = ["class-il", "domain-il", "task-il"]
 
     def __init__(self, backbone, loss, args, transform):
         super(SI, self).__init__(backbone, loss, args, transform)
@@ -38,7 +41,9 @@ class SI(ContinualModel):
         if self.big_omega is None:
             return torch.tensor(0.0).to(self.device)
         else:
-            penalty = (self.big_omega * ((self.net.get_params() - self.checkpoint) ** 2)).sum()
+            penalty = (
+                self.big_omega * ((self.net.get_params() - self.checkpoint) ** 2)
+            ).sum()
             return penalty
 
     def end_task(self, dataset):
@@ -46,7 +51,9 @@ class SI(ContinualModel):
         if self.big_omega is None:
             self.big_omega = torch.zeros_like(self.net.get_params()).to(self.device)
 
-        self.big_omega += self.small_omega / ((self.net.get_params().data - self.checkpoint) ** 2 + self.args.xi)
+        self.big_omega += self.small_omega / (
+            (self.net.get_params().data - self.checkpoint) ** 2 + self.args.xi
+        )
 
         # store parameters checkpoint and reset small_omega
         self.checkpoint = self.net.get_params().data.clone().to(self.device)

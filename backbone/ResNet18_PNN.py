@@ -36,9 +36,15 @@ class ResNetPNN(ResNet):
     ResNet network architecture modified for PNN.
     """
 
-    def __init__(self, block: BasicBlock, num_blocks: List[int],
-                 num_classes: int, nf: int, old_cols: List[nn.Module] = None,
-                 x_shape: torch.Size = None):
+    def __init__(
+        self,
+        block: BasicBlock,
+        num_blocks: List[int],
+        num_classes: int,
+        nf: int,
+        old_cols: List[nn.Module] = None,
+        x_shape: torch.Size = None,
+    ):
         """
         Instantiates the layers of the network.
         :param block: the basic ResNet block
@@ -62,38 +68,55 @@ class ResNetPNN(ResNet):
         self.adaptor4 = nn.Sequential(
             AlphaModule((nf * 8 * len(old_cols), 1, 1)),
             nn.Conv2d(nf * 8 * len(old_cols), nf * 8, 1),
-            nn.ReLU()
+            nn.ReLU(),
         )
         for i in range(5):
-            setattr(self, 'old_layer' + str(i) + 's', ListModule())
+            setattr(self, "old_layer" + str(i) + "s", ListModule())
 
         for i in range(1, 4):
             factor = 2 ** (i - 1)
-            setattr(self, 'lateral_layer' + str(i + 1),
-                    self._make_layer(block, nf * (2 ** i), num_blocks[i], stride=2)
-                    )
-            setattr(self, 'adaptor' + str(i),
-                    nn.Sequential(
-                    AlphaModule((nf * len(old_cols) * factor,
-                                 self.x_shape[2] // factor, self.x_shape[3] // factor)),
+            setattr(
+                self,
+                "lateral_layer" + str(i + 1),
+                self._make_layer(block, nf * (2**i), num_blocks[i], stride=2),
+            )
+            setattr(
+                self,
+                "adaptor" + str(i),
+                nn.Sequential(
+                    AlphaModule(
+                        (
+                            nf * len(old_cols) * factor,
+                            self.x_shape[2] // factor,
+                            self.x_shape[3] // factor,
+                        )
+                    ),
                     nn.Conv2d(nf * len(old_cols) * factor, nf * factor, 1),
                     nn.ReLU(),
-                    getattr(self, 'lateral_layer' + str(i + 1))
-                    ))
+                    getattr(self, "lateral_layer" + str(i + 1)),
+                ),
+            )
         for old_col in old_cols:
             self.in_planes = self.nf
             self.old_layer0s.append(conv3x3(3, nf * 1))
             self.old_layer0s[-1].load_state_dict(old_col.conv1.state_dict())
             for i in range(1, 5):
-                factor = (2 ** (i - 1))
-                layer = getattr(self, 'old_layer' + str(i) + 's')
-                layer.append(self._make_layer(block, nf * factor,
-                             num_blocks[i - 1], stride=(1 if i == 1 else 2)))
-                old_layer = getattr(old_col, 'layer' + str(i))
+                factor = 2 ** (i - 1)
+                layer = getattr(self, "old_layer" + str(i) + "s")
+                layer.append(
+                    self._make_layer(
+                        block,
+                        nf * factor,
+                        num_blocks[i - 1],
+                        stride=(1 if i == 1 else 2),
+                    )
+                )
+                old_layer = getattr(old_col, "layer" + str(i))
                 layer[-1].load_state_dict(old_layer.state_dict())
 
-    def _make_layer(self, block: BasicBlock, planes: int,
-                    num_blocks: int, stride: int) -> nn.Module:
+    def _make_layer(
+        self, block: BasicBlock, planes: int, num_blocks: int, stride: int
+    ) -> nn.Module:
         """
         Instantiates a ResNet layer.
         :param block: ResNet basic block
@@ -111,7 +134,7 @@ class ResNetPNN(ResNet):
         layers.append(nn.ReLU())
         return nn.Sequential(*(layers[1:]))
 
-    def forward(self, x: torch.Tensor, returnt='out') -> torch.Tensor:
+    def forward(self, x: torch.Tensor, returnt="out") -> torch.Tensor:
         """
         Compute a forward pass.
         :param x: input tensor (batch_size, *input_shape)
@@ -146,14 +169,18 @@ class ResNetPNN(ResNet):
             y = self.lateral_classifier(y)
             out = self.linear(out) + y
 
-        if returnt == 'out':
+        if returnt == "out":
             return out
 
         raise NotImplementedError("Unknown return type")
 
 
-def resnet18_pnn(nclasses: int, nf: int = 64,
-                 old_cols: List[nn.Module] = None, x_shape: torch.Size = None):
+def resnet18_pnn(
+    nclasses: int,
+    nf: int = 64,
+    old_cols: List[nn.Module] = None,
+    x_shape: torch.Size = None,
+):
     """
     Instantiates a ResNet18 network.
     :param nclasses: number of output classes
@@ -162,5 +189,6 @@ def resnet18_pnn(nclasses: int, nf: int = 64,
     """
     if old_cols is None:
         old_cols = []
-    return ResNetPNN(BasicBlockPnn, [2, 2, 2, 2], nclasses, nf,
-                     old_cols=old_cols, x_shape=x_shape)
+    return ResNetPNN(
+        BasicBlockPnn, [2, 2, 2, 2], nclasses, nf, old_cols=old_cols, x_shape=x_shape
+    )

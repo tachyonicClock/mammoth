@@ -14,15 +14,15 @@ from utils.status import progress_bar
 
 
 def get_parser() -> ArgumentParser:
-    parser = ArgumentParser(description='Joint training: a strong, simple baseline.')
+    parser = ArgumentParser(description="Joint training: a strong, simple baseline.")
     add_management_args(parser)
     add_experiment_args(parser)
     return parser
 
 
 class JointGCL(ContinualModel):
-    NAME = 'joint_gcl'
-    COMPATIBILITY = ['general-continual']
+    NAME = "joint_gcl"
+    COMPATIBILITY = ["general-continual"]
 
     def __init__(self, backbone, loss, args, transform):
         super(JointGCL, self).__init__(backbone, loss, args, transform)
@@ -45,8 +45,12 @@ class JointGCL(ContinualModel):
         for e in range(1):  # range(self.args.n_epochs):
             rp = torch.randperm(len(all_data))
             for i in range(math.ceil(len(all_data) / self.args.batch_size)):
-                inputs = all_data[rp][i * self.args.batch_size:(i + 1) * self.args.batch_size]
-                labels = all_labels[rp][i * self.args.batch_size:(i + 1) * self.args.batch_size]
+                inputs = all_data[rp][
+                    i * self.args.batch_size : (i + 1) * self.args.batch_size
+                ]
+                labels = all_labels[rp][
+                    i * self.args.batch_size : (i + 1) * self.args.batch_size
+                ]
                 inputs, labels = inputs.to(self.device), labels.to(self.device)
 
                 self.opt.zero_grad()
@@ -54,7 +58,13 @@ class JointGCL(ContinualModel):
                 loss = self.loss(outputs, labels.long())
                 loss.backward()
                 self.opt.step()
-                progress_bar(i, math.ceil(len(all_data) / self.args.batch_size), e, 'J', loss.item())
+                progress_bar(
+                    i,
+                    math.ceil(len(all_data) / self.args.batch_size),
+                    e,
+                    "J",
+                    loss.item(),
+                )
 
     def observe(self, inputs, labels, not_aug_inputs):
         self.old_data.append(inputs.data)

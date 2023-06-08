@@ -12,21 +12,22 @@ from utils.args import add_management_args, add_experiment_args, ArgumentParser
 
 
 def get_parser() -> ArgumentParser:
-    parser = ArgumentParser(description='Continual learning via'
-                                        ' online EWC.')
+    parser = ArgumentParser(description="Continual learning via" " online EWC.")
     add_management_args(parser)
     add_experiment_args(parser)
-    parser.add_argument('--e_lambda', type=float, required=True,
-                        help='lambda weight for EWC')
-    parser.add_argument('--gamma', type=float, required=True,
-                        help='gamma parameter for EWC online')
+    parser.add_argument(
+        "--e_lambda", type=float, required=True, help="lambda weight for EWC"
+    )
+    parser.add_argument(
+        "--gamma", type=float, required=True, help="gamma parameter for EWC online"
+    )
 
     return parser
 
 
 class EwcOn(ContinualModel):
-    NAME = 'ewc_on'
-    COMPATIBILITY = ['class-il', 'domain-il', 'task-il']
+    NAME = "ewc_on"
+    COMPATIBILITY = ["class-il", "domain-il", "task-il"]
 
     def __init__(self, backbone, loss, args, transform):
         super(EwcOn, self).__init__(backbone, loss, args, transform)
@@ -39,7 +40,9 @@ class EwcOn(ContinualModel):
         if self.checkpoint is None:
             return torch.tensor(0.0).to(self.device)
         else:
-            penalty = (self.fish * ((self.net.get_params() - self.checkpoint) ** 2)).sum()
+            penalty = (
+                self.fish * ((self.net.get_params() - self.checkpoint) ** 2)
+            ).sum()
             return penalty
 
     def end_task(self, dataset):
@@ -51,14 +54,15 @@ class EwcOn(ContinualModel):
             for ex, lab in zip(inputs, labels):
                 self.opt.zero_grad()
                 output = self.net(ex.unsqueeze(0))
-                loss = - F.nll_loss(self.logsoft(output), lab.unsqueeze(0),
-                                    reduction='none')
+                loss = -F.nll_loss(
+                    self.logsoft(output), lab.unsqueeze(0), reduction="none"
+                )
                 exp_cond_prob = torch.mean(torch.exp(loss.detach().clone()))
                 loss = torch.mean(loss)
                 loss.backward()
                 fish += exp_cond_prob * self.net.get_grads() ** 2
 
-        fish /= (len(dataset.train_loader) * self.args.batch_size)
+        fish /= len(dataset.train_loader) * self.args.batch_size
 
         if self.fish is None:
             self.fish = fish

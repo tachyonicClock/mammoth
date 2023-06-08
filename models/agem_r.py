@@ -9,13 +9,19 @@ import torch
 from models.agem import project
 from models.gem import overwrite_grad, store_grad
 from models.utils.continual_model import ContinualModel
-from utils.args import add_management_args, add_experiment_args, add_rehearsal_args, ArgumentParser
+from utils.args import (
+    add_management_args,
+    add_experiment_args,
+    add_rehearsal_args,
+    ArgumentParser,
+)
 from utils.buffer import Buffer
 
 
 def get_parser() -> ArgumentParser:
-    parser = ArgumentParser(description='Continual learning via A-GEM, '
-                                        'leveraging a reservoir buffer.')
+    parser = ArgumentParser(
+        description="Continual learning via A-GEM, " "leveraging a reservoir buffer."
+    )
     add_management_args(parser)
     add_experiment_args(parser)
     add_rehearsal_args(parser)
@@ -23,8 +29,8 @@ def get_parser() -> ArgumentParser:
 
 
 class AGemr(ContinualModel):
-    NAME = 'agem_r'
-    COMPATIBILITY = ['class-il', 'domain-il', 'task-il', 'general-continual']
+    NAME = "agem_r"
+    COMPATIBILITY = ["class-il", "domain-il", "task-il", "general-continual"]
 
     def __init__(self, backbone, loss, args, transform):
         super(AGemr, self).__init__(backbone, loss, args, transform)

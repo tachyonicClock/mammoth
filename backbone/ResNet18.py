@@ -13,7 +13,7 @@ from torch.nn.functional import avg_pool2d, relu
 from backbone import MammothBackbone
 
 
-def conv3x3(in_planes: int, out_planes: int, stride: int=1) -> F.conv2d:
+def conv3x3(in_planes: int, out_planes: int, stride: int = 1) -> F.conv2d:
     """
     Instantiates a 3x3 convolutional layer with no bias.
     :param in_planes: number of input channels
@@ -21,17 +21,19 @@ def conv3x3(in_planes: int, out_planes: int, stride: int=1) -> F.conv2d:
     :param stride: stride of the convolution
     :return: convolutional layer
     """
-    return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
-                     padding=1, bias=False)
+    return nn.Conv2d(
+        in_planes, out_planes, kernel_size=3, stride=stride, padding=1, bias=False
+    )
 
 
 class BasicBlock(nn.Module):
     """
     The basic block of ResNet.
     """
+
     expansion = 1
 
-    def __init__(self, in_planes: int, planes: int, stride: int=1) -> None:
+    def __init__(self, in_planes: int, planes: int, stride: int = 1) -> None:
         """
         Instantiates the basic block of the network.
         :param in_planes: the number of input channels
@@ -46,9 +48,14 @@ class BasicBlock(nn.Module):
         self.shortcut = nn.Sequential()
         if stride != 1 or in_planes != self.expansion * planes:
             self.shortcut = nn.Sequential(
-                nn.Conv2d(in_planes, self.expansion * planes, kernel_size=1,
-                          stride=stride, bias=False),
-                nn.BatchNorm2d(self.expansion * planes)
+                nn.Conv2d(
+                    in_planes,
+                    self.expansion * planes,
+                    kernel_size=1,
+                    stride=stride,
+                    bias=False,
+                ),
+                nn.BatchNorm2d(self.expansion * planes),
             )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -69,8 +76,9 @@ class ResNet(MammothBackbone):
     ResNet network architecture. Designed for complex datasets.
     """
 
-    def __init__(self, block: BasicBlock, num_blocks: List[int],
-                 num_classes: int, nf: int) -> None:
+    def __init__(
+        self, block: BasicBlock, num_blocks: List[int], num_classes: int, nf: int
+    ) -> None:
         """
         Instantiates the layers of the network.
         :param block: the basic ResNet block
@@ -91,18 +99,20 @@ class ResNet(MammothBackbone):
         self.layer4 = self._make_layer(block, nf * 8, num_blocks[3], stride=2)
         self.linear = nn.Linear(nf * 8 * block.expansion, num_classes)
 
-        self._features = nn.Sequential(self.conv1,
-                                       self.bn1,
-                                       nn.ReLU(),
-                                       self.layer1,
-                                       self.layer2,
-                                       self.layer3,
-                                       self.layer4
-                                       )
+        self._features = nn.Sequential(
+            self.conv1,
+            self.bn1,
+            nn.ReLU(),
+            self.layer1,
+            self.layer2,
+            self.layer3,
+            self.layer4,
+        )
         self.classifier = self.linear
 
-    def _make_layer(self, block: BasicBlock, planes: int,
-                    num_blocks: int, stride: int) -> nn.Module:
+    def _make_layer(
+        self, block: BasicBlock, planes: int, num_blocks: int, stride: int
+    ) -> nn.Module:
         """
         Instantiates a ResNet layer.
         :param block: ResNet basic block
@@ -118,7 +128,7 @@ class ResNet(MammothBackbone):
             self.in_planes = planes * block.expansion
         return nn.Sequential(*layers)
 
-    def forward(self, x: torch.Tensor, returnt='out') -> torch.Tensor:
+    def forward(self, x: torch.Tensor, returnt="out") -> torch.Tensor:
         """
         Compute a forward pass.
         :param x: input tensor (batch_size, *input_shape)
@@ -126,30 +136,30 @@ class ResNet(MammothBackbone):
         :return: output tensor (output_classes)
         """
 
-        out = relu(self.bn1(self.conv1(x))) # 64, 32, 32
-        if hasattr(self, 'maxpool'):
+        out = relu(self.bn1(self.conv1(x)))  # 64, 32, 32
+        if hasattr(self, "maxpool"):
             out = self.maxpool(out)
         out = self.layer1(out)  # -> 64, 32, 32
         out = self.layer2(out)  # -> 128, 16, 16
         out = self.layer3(out)  # -> 256, 8, 8
         out = self.layer4(out)  # -> 512, 4, 4
-        out = avg_pool2d(out, out.shape[2]) # -> 512, 1, 1
+        out = avg_pool2d(out, out.shape[2])  # -> 512, 1, 1
         feature = out.view(out.size(0), -1)  # 512
 
-        if returnt == 'features':
+        if returnt == "features":
             return feature
 
         out = self.classifier(feature)
 
-        if returnt == 'out':
+        if returnt == "out":
             return out
-        elif returnt == 'all':
+        elif returnt == "all":
             return (out, feature)
 
         raise NotImplementedError("Unknown return type")
 
 
-def resnet18(nclasses: int, nf: int=64) -> ResNet:
+def resnet18(nclasses: int, nf: int = 64) -> ResNet:
     """
     Instantiates a ResNet18 network.
     :param nclasses: number of output classes

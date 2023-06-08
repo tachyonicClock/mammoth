@@ -7,7 +7,12 @@ import torch
 from datasets import get_dataset
 
 from models.utils.continual_model import ContinualModel
-from utils.args import add_management_args, add_experiment_args, add_rehearsal_args, ArgumentParser
+from utils.args import (
+    add_management_args,
+    add_experiment_args,
+    add_rehearsal_args,
+    ArgumentParser,
+)
 from utils.buffer import Buffer
 
 
@@ -55,8 +60,7 @@ def dsimplex(num_classes=10):
 
 
 def get_parser() -> ArgumentParser:
-    parser = ArgumentParser(description='Continual learning via'
-                                        ' Experience Replay.')
+    parser = ArgumentParser(description="Continual learning via" " Experience Replay.")
     add_management_args(parser)
     add_experiment_args(parser)
     add_rehearsal_args(parser)
@@ -64,8 +68,8 @@ def get_parser() -> ArgumentParser:
 
 
 class RPC(ContinualModel):
-    NAME = 'rpc'
-    COMPATIBILITY = ['class-il', 'task-il']
+    NAME = "rpc"
+    COMPATIBILITY = ["class-il", "task-il"]
 
     def __init__(self, backbone, loss, args, transform):
         super(RPC, self).__init__(backbone, loss, args, transform)
@@ -73,7 +77,9 @@ class RPC(ContinualModel):
         self.cpt = get_dataset(args).N_CLASSES_PER_TASK
         self.tasks = get_dataset(args).N_TASKS
         self.task = 0
-        self.rpchead = torch.from_numpy(dsimplex(self.cpt * self.tasks)).float().to(self.device)
+        self.rpchead = (
+            torch.from_numpy(dsimplex(self.cpt * self.tasks)).float().to(self.device)
+        )
 
     def forward(self, x):
         x = self.net(x)[:, :-1]
@@ -90,16 +96,17 @@ class RPC(ContinualModel):
                 idx = tl == buf_lab
                 ex, lab = buf_x[idx], buf_lab[idx]
                 first = min(ex.shape[0], examples_per_class)
-                self.buffer.add_data(
-                    examples=ex[:first],
-                    labels=lab[:first]
-                )
+                self.buffer.add_data(examples=ex[:first], labels=lab[:first])
 
         # add new task
         examples_last_task = self.buffer.buffer_size - self.buffer.num_seen_examples
         examples_per_class = examples_last_task // self.cpt
         ce = torch.tensor([examples_per_class] * self.cpt).int()
-        ce[torch.randperm(self.cpt)[:examples_last_task - (examples_per_class * self.cpt)]] += 1
+        ce[
+            torch.randperm(self.cpt)[
+                : examples_last_task - (examples_per_class * self.cpt)
+            ]
+        ] += 1
 
         with torch.no_grad():
             for data in dataset.train_loader:
@@ -114,20 +121,22 @@ class RPC(ContinualModel):
                         flags[j] = True
                         ce[labels[j] % self.cpt] -= 1
 
-                self.buffer.add_data(examples=not_aug_inputs[flags],
-                                     labels=labels[flags])
+                self.buffer.add_data(
+                    examples=not_aug_inputs[flags], labels=labels[flags]
+                )
         self.task += 1
 
     def observe(self, inputs, labels, not_aug_inputs):
         self.opt.zero_grad()
         if not self.buffer.is_empty():
             buf_inputs, buf_labels = self.buffer.get_data(
-                self.args.minibatch_size, transform=self.transform)
+                self.args.minibatch_size, transform=self.transform
+            )
             inputs = torch.cat((inputs, buf_inputs))
             labels = torch.cat((labels, buf_labels))
 
         outputs = self.net(inputs)
-        losses = self.loss(outputs, labels, reduction='none')
+        losses = self.loss(outputs, labels, reduction="none")
         loss = losses.mean()
 
         loss.backward()

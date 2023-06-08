@@ -13,8 +13,8 @@ from datasets.utils.continual_dataset import ContinualDataset
 
 
 class RotatedMNIST(ContinualDataset):
-    NAME = 'rot-mnist'
-    SETTING = 'domain-il'
+    NAME = "rot-mnist"
+    SETTING = "domain-il"
     N_CLASSES_PER_TASK = 10
     N_TASKS = 20
 

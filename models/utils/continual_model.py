@@ -23,11 +23,17 @@ class ContinualModel(nn.Module):
     """
     Continual learning model.
     """
+
     NAME: str
     COMPATIBILITY: List[str]
 
-    def __init__(self, backbone: nn.Module, loss: nn.Module,
-                 args: Namespace, transform: nn.Module) -> None:
+    def __init__(
+        self,
+        backbone: nn.Module,
+        loss: nn.Module,
+        args: Namespace,
+        transform: nn.Module,
+    ) -> None:
         super(ContinualModel, self).__init__()
 
         self.net = backbone
@@ -38,7 +44,9 @@ class ContinualModel(nn.Module):
         self.device = get_device()
 
         if not self.NAME or not self.COMPATIBILITY:
-            raise NotImplementedError('Please specify the name and the compatibility of the model.')
+            raise NotImplementedError(
+                "Please specify the name and the compatibility of the model."
+            )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -50,7 +58,7 @@ class ContinualModel(nn.Module):
         return self.net(x)
 
     def meta_observe(self, *args, **kwargs):
-        if 'wandb' in sys.modules and not self.args.nowand:
+        if "wandb" in sys.modules and not self.args.nowand:
             pl = persistent_locals(self.observe)
             ret = pl(*args, **kwargs)
             self.autolog_wandb(pl.locals)
@@ -58,8 +66,9 @@ class ContinualModel(nn.Module):
             ret = self.observe(*args, **kwargs)
         return ret
 
-    def observe(self, inputs: torch.Tensor, labels: torch.Tensor,
-                not_aug_inputs: torch.Tensor) -> float:
+    def observe(
+        self, inputs: torch.Tensor, labels: torch.Tensor, not_aug_inputs: torch.Tensor
+    ) -> float:
         """
         Compute a training step over a given batch of examples.
         :param inputs: batch of examples
@@ -75,5 +84,10 @@ class ContinualModel(nn.Module):
         are automatically logged to wandb upon return if wandb is installed.
         """
         if not self.args.nowand and not self.args.debug_mode:
-            wandb.log({k: (v.item() if isinstance(v, torch.Tensor) and v.dim() == 0 else v)
-                      for k, v in locals.items() if k.startswith('_wandb_') or k.startswith('loss')})
+            wandb.log(
+                {
+                    k: (v.item() if isinstance(v, torch.Tensor) and v.dim() == 0 else v)
+                    for k, v in locals.items()
+                    if k.startswith("_wandb_") or k.startswith("loss")
+                }
+            )

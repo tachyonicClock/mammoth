@@ -11,32 +11,38 @@ from datasets import get_dataset
 from torch.optim import SGD
 
 from models.utils.continual_model import ContinualModel
-from utils.args import add_management_args, add_experiment_args, add_rehearsal_args, ArgumentParser
+from utils.args import (
+    add_management_args,
+    add_experiment_args,
+    add_rehearsal_args,
+    ArgumentParser,
+)
 from utils.buffer import Buffer
 
 
 def get_parser() -> ArgumentParser:
-    parser = ArgumentParser(description='Continual learning via'
-                                        ' Experience Replay.')
+    parser = ArgumentParser(description="Continual learning via" " Experience Replay.")
     add_management_args(parser)
     add_experiment_args(parser)
     add_rehearsal_args(parser)
 
-    parser.add_argument('--hal_lambda', type=float, default=0.1)
-    parser.add_argument('--beta', type=float, default=0.5)
-    parser.add_argument('--gamma', type=float, default=0.1)
+    parser.add_argument("--hal_lambda", type=float, default=0.1)
+    parser.add_argument("--beta", type=float, default=0.5)
+    parser.add_argument("--gamma", type=float, default=0.1)
 
     return parser
 
 
 class HAL(ContinualModel):
-    NAME = 'hal'
-    COMPATIBILITY = ['class-il', 'domain-il', 'task-il']
+    NAME = "hal"
+    COMPATIBILITY = ["class-il", "domain-il", "task-il"]
 
     def __init__(self, backbone, loss, args, transform):
         super(HAL, self).__init__(backbone, loss, args, transform)
         self.task_number = 0
-        self.buffer = Buffer(self.args.buffer_size, self.device, get_dataset(args).N_TASKS, mode='ring')
+        self.buffer = Buffer(
+            self.args.buffer_size, self.device, get_dataset(args).N_TASKS, mode="ring"
+        )
         self.hal_lambda = args.hal_lambda
         self.beta = args.beta
         self.gamma = args.gamma
@@ -64,7 +70,9 @@ class HAL(ContinualModel):
 
         # fine tune on memory buffer
         for _ in range(self.finetuning_epochs):
-            inputs, labels = self.buffer.get_data(self.args.batch_size, transform=self.transform)
+            inputs, labels = self.buffer.get_data(
+                self.args.batch_size, transform=self.transform
+            )
             self.spare_opt.zero_grad()
             out = self.spare_model(inputs)
             loss = self.loss(out, labels)
@@ -85,18 +93,35 @@ class HAL(ContinualModel):
 
                 self.spare_opt.zero_grad()
                 self.spare_model.set_params(theta_m.detach().clone())
-                loss = -torch.sum(self.loss(self.spare_model(e_t.unsqueeze(0)), torch.tensor([a_class]).to(self.device)))
+                loss = -torch.sum(
+                    self.loss(
+                        self.spare_model(e_t.unsqueeze(0)),
+                        torch.tensor([a_class]).to(self.device),
+                    )
+                )
                 loss.backward()
                 cum_loss += loss.item()
 
                 self.spare_opt.zero_grad()
                 self.spare_model.set_params(theta_t.detach().clone())
-                loss = torch.sum(self.loss(self.spare_model(e_t.unsqueeze(0)), torch.tensor([a_class]).to(self.device)))
+                loss = torch.sum(
+                    self.loss(
+                        self.spare_model(e_t.unsqueeze(0)),
+                        torch.tensor([a_class]).to(self.device),
+                    )
+                )
                 loss.backward()
                 cum_loss += loss.item()
 
                 self.spare_opt.zero_grad()
-                loss = torch.sum(self.gamma * (self.spare_model(e_t.unsqueeze(0), returnt='features') - self.phi) ** 2)
+                loss = torch.sum(
+                    self.gamma
+                    * (
+                        self.spare_model(e_t.unsqueeze(0), returnt="features")
+                        - self.phi
+                    )
+                    ** 2
+                )
                 assert not self.phi.requires_grad
                 loss.backward()
                 cum_loss += loss.item()
@@ -107,25 +132,31 @@ class HAL(ContinualModel):
             e_t.requires_grad = False
             self.anchors = torch.cat((self.anchors, e_t.unsqueeze(0)))
             del e_t
-            print('Total anchors:', len(self.anchors), file=sys.stderr)
+            print("Total anchors:", len(self.anchors), file=sys.stderr)
 
         self.spare_model.zero_grad()
 
     def observe(self, inputs, labels, not_aug_inputs):
         real_batch_size = inputs.shape[0]
-        if not hasattr(self, 'input_shape'):
+        if not hasattr(self, "input_shape"):
             self.input_shape = inputs.shape[1:]
-        if not hasattr(self, 'anchors'):
-            self.anchors = torch.zeros(tuple([0] + list(self.input_shape))).to(self.device)
-        if not hasattr(self, 'phi'):
-            print('Building phi', file=sys.stderr)
+        if not hasattr(self, "anchors"):
+            self.anchors = torch.zeros(tuple([0] + list(self.input_shape))).to(
+                self.device
+            )
+        if not hasattr(self, "phi"):
+            print("Building phi", file=sys.stderr)
             with torch.no_grad():
-                self.phi = torch.zeros_like(self.net(inputs[0].unsqueeze(0), returnt='features'), requires_grad=False)
+                self.phi = torch.zeros_like(
+                    self.net(inputs[0].unsqueeze(0), returnt="features"),
+                    requires_grad=False,
+                )
             assert not self.phi.requires_grad
 
         if not self.buffer.is_empty():
             buf_inputs, buf_labels = self.buffer.get_data(
-                self.args.minibatch_size, transform=self.transform)
+                self.args.minibatch_size, transform=self.transform
+            )
             inputs = torch.cat((inputs, buf_inputs))
             labels = torch.cat((labels, buf_labels))
 
@@ -151,14 +182,15 @@ class HAL(ContinualModel):
 
             self.net.set_params(old_weights)
             pred_anchors -= self.net(self.anchors)
-            loss = self.hal_lambda * (pred_anchors ** 2).mean()
+            loss = self.hal_lambda * (pred_anchors**2).mean()
             loss.backward()
             self.opt.step()
 
         with torch.no_grad():
-            self.phi = self.beta * self.phi + (1 - self.beta) * self.net(inputs[:real_batch_size], returnt='features').mean(0)
+            self.phi = self.beta * self.phi + (1 - self.beta) * self.net(
+                inputs[:real_batch_size], returnt="features"
+            ).mean(0)
 
-        self.buffer.add_data(examples=not_aug_inputs,
-                             labels=labels[:real_batch_size])
+        self.buffer.add_data(examples=not_aug_inputs, labels=labels[:real_batch_size])
 
         return first_loss + loss.item()

@@ -19,19 +19,24 @@ from utils.conf import base_path_dataset as base_path
 
 
 def store_mnist_loaders(transform, setting):
-    train_dataset = MyMNIST(base_path() + 'MNIST',
-                            train=True, download=True, transform=transform)
+    train_dataset = MyMNIST(
+        base_path() + "MNIST", train=True, download=True, transform=transform
+    )
     if setting.args.validation:
-        train_dataset, test_dataset = get_train_val(train_dataset,
-                                                    transform, setting.NAME)
+        train_dataset, test_dataset = get_train_val(
+            train_dataset, transform, setting.NAME
+        )
     else:
-        test_dataset = MNIST(base_path() + 'MNIST',
-                             train=False, download=True, transform=transform)
+        test_dataset = MNIST(
+            base_path() + "MNIST", train=False, download=True, transform=transform
+        )
 
-    train_loader = DataLoader(train_dataset,
-                              batch_size=setting.args.batch_size, shuffle=True)
-    test_loader = DataLoader(test_dataset,
-                             batch_size=setting.args.batch_size, shuffle=False)
+    train_loader = DataLoader(
+        train_dataset, batch_size=setting.args.batch_size, shuffle=True
+    )
+    test_loader = DataLoader(
+        test_dataset, batch_size=setting.args.batch_size, shuffle=False
+    )
     setting.test_loaders.append(test_loader)
     setting.train_loader = train_loader
 
@@ -43,10 +48,12 @@ class MyMNIST(MNIST):
     Overrides the MNIST dataset to change the getitem function.
     """
 
-    def __init__(self, root, train=True, transform=None,
-                 target_transform=None, download=False) -> None:
-        super(MyMNIST, self).__init__(root, train, transform,
-                                      target_transform, download)
+    def __init__(
+        self, root, train=True, transform=None, target_transform=None, download=False
+    ) -> None:
+        super(MyMNIST, self).__init__(
+            root, train, transform, target_transform, download
+        )
 
     def __getitem__(self, index: int) -> Tuple[Image.Image, int, Image.Image]:
         """
@@ -58,7 +65,7 @@ class MyMNIST(MNIST):
 
         # doing this so that it is consistent with all other datasets
         # to return a PIL Image
-        img = Image.fromarray(img.numpy(), mode='L')
+        img = Image.fromarray(img.numpy(), mode="L")
 
         if self.transform is not None:
             img = self.transform(img)
@@ -71,8 +78,8 @@ class MyMNIST(MNIST):
 
 class PermutedMNIST(ContinualDataset):
 
-    NAME = 'perm-mnist'
-    SETTING = 'domain-il'
+    NAME = "perm-mnist"
+    SETTING = "domain-il"
     N_CLASSES_PER_TASK = 10
     N_TASKS = 20
 

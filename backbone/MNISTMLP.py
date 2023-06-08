@@ -45,7 +45,7 @@ class MNISTMLP(MammothBackbone):
         """
         self.net.apply(xavier)
 
-    def forward(self, x: torch.Tensor, returnt='out') -> torch.Tensor:
+    def forward(self, x: torch.Tensor, returnt="out") -> torch.Tensor:
         """
         Compute a forward pass.
         :param x: input tensor (batch_size, input_size)
@@ -55,14 +55,14 @@ class MNISTMLP(MammothBackbone):
 
         feats = self._features(x)
 
-        if returnt == 'features':
+        if returnt == "features":
             return feats
 
         out = self.classifier(feats)
 
-        if returnt == 'out':
+        if returnt == "out":
             return out
-        elif returnt == 'all':
+        elif returnt == "all":
             return (out, feats)
 
         raise NotImplementedError("Unknown return type")

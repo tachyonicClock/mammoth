@@ -64,7 +64,9 @@ class IncrementalRotation(object):
     Defines an incremental rotation for a numpy array.
     """
 
-    def __init__(self, init_deg: int = 0, increase_per_iteration: float = 0.006) -> None:
+    def __init__(
+        self, init_deg: int = 0, increase_per_iteration: float = 0.006
+    ) -> None:
         """
         Defines the initial angle as well as the increase for each rotation
         :param init_deg:

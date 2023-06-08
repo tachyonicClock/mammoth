@@ -3,12 +3,13 @@
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 
+
 class GCLDataset:
     """
     Continual learning evaluation setting.
     """
+
     NAME = None
     SETTING = None
     N_CLASSES = None
     LENGTH = None
-    

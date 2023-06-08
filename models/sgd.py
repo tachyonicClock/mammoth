@@ -8,16 +8,17 @@ from utils.args import add_management_args, add_experiment_args, ArgumentParser
 
 
 def get_parser() -> ArgumentParser:
-    parser = ArgumentParser(description='Continual Learning via'
-                                        ' Progressive Neural Networks.')
+    parser = ArgumentParser(
+        description="Continual Learning via" " Progressive Neural Networks."
+    )
     add_management_args(parser)
     add_experiment_args(parser)
     return parser
 
 
 class Sgd(ContinualModel):
-    NAME = 'sgd'
-    COMPATIBILITY = ['class-il', 'domain-il', 'task-il', 'general-continual']
+    NAME = "sgd"
+    COMPATIBILITY = ["class-il", "domain-il", "task-il", "general-continual"]
 
     def __init__(self, backbone, loss, args, transform):
         super(Sgd, self).__init__(backbone, loss, args, transform)

@@ -6,24 +6,29 @@
 import torch
 
 from models.utils.continual_model import ContinualModel
-from utils.args import add_management_args, add_experiment_args, add_rehearsal_args, ArgumentParser
+from utils.args import (
+    add_management_args,
+    add_experiment_args,
+    add_rehearsal_args,
+    ArgumentParser,
+)
 from utils.buffer import Buffer
 
 
 def get_parser() -> ArgumentParser:
-    parser = ArgumentParser(description='Continual learning via'
-                                        ' Dark Experience Replay.')
+    parser = ArgumentParser(
+        description="Continual learning via" " Dark Experience Replay."
+    )
     add_management_args(parser)
     add_experiment_args(parser)
     add_rehearsal_args(parser)
-    parser.add_argument('--alpha', type=float, required=True,
-                        help='Penalty weight.')
+    parser.add_argument("--alpha", type=float, required=True, help="Penalty weight.")
     return parser
 
 
 class Fdr(ContinualModel):
-    NAME = 'fdr'
-    COMPATIBILITY = ['class-il', 'domain-il', 'task-il', 'general-continual']
+    NAME = "fdr"
+    COMPATIBILITY = ["class-il", "domain-il", "task-il", "general-continual"]
 
     def __init__(self, backbone, loss, args, transform):
         super(Fdr, self).__init__(backbone, loss, args, transform)
@@ -42,13 +47,11 @@ class Fdr(ContinualModel):
             self.buffer.empty()
 
             for ttl in buf_tl.unique():
-                idx = (buf_tl == ttl)
+                idx = buf_tl == ttl
                 ex, log, tasklab = buf_x[idx], buf_log[idx], buf_tl[idx]
                 first = min(ex.shape[0], examples_per_task)
                 self.buffer.add_data(
-                    examples=ex[:first],
-                    logits=log[:first],
-                    task_labels=tasklab[:first]
+                    examples=ex[:first], logits=log[:first], task_labels=tasklab[:first]
                 )
         counter = 0
         with torch.no_grad():
@@ -59,10 +62,13 @@ class Fdr(ContinualModel):
                 outputs = self.net(inputs)
                 if examples_per_task - counter < 0:
                     break
-                self.buffer.add_data(examples=not_aug_inputs[:(examples_per_task - counter)],
-                                     logits=outputs.data[:(examples_per_task - counter)],
-                                     task_labels=(torch.ones(self.args.batch_size) *
-                                                  (self.current_task - 1))[:(examples_per_task - counter)])
+                self.buffer.add_data(
+                    examples=not_aug_inputs[: (examples_per_task - counter)],
+                    logits=outputs.data[: (examples_per_task - counter)],
+                    task_labels=(
+                        torch.ones(self.args.batch_size) * (self.current_task - 1)
+                    )[: (examples_per_task - counter)],
+                )
                 counter += self.args.batch_size
 
     def observe(self, inputs, labels, not_aug_inputs):
@@ -75,9 +81,13 @@ class Fdr(ContinualModel):
         self.opt.step()
         if not self.buffer.is_empty():
             self.opt.zero_grad()
-            buf_inputs, buf_logits, _ = self.buffer.get_data(self.args.minibatch_size, transform=self.transform)
+            buf_inputs, buf_logits, _ = self.buffer.get_data(
+                self.args.minibatch_size, transform=self.transform
+            )
             buf_outputs = self.net(buf_inputs)
-            loss = torch.norm(self.soft(buf_outputs) - self.soft(buf_logits), 2, 1).mean()
+            loss = torch.norm(
+                self.soft(buf_outputs) - self.soft(buf_logits), 2, 1
+            ).mean()
             assert not torch.isnan(loss)
             loss.backward()
             self.opt.step()

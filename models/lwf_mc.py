@@ -13,27 +13,32 @@ import numpy as np
 
 
 def get_parser() -> ArgumentParser:
-    parser = ArgumentParser(description='Continual Learning via iCaRL.')
+    parser = ArgumentParser(description="Continual Learning via iCaRL.")
 
     add_management_args(parser)
     add_experiment_args(parser)
-    
-    parser.add_argument('--wd_reg', type=float, required=True,
-                        help='L2 regularization applied to the parameters.')
+
+    parser.add_argument(
+        "--wd_reg",
+        type=float,
+        required=True,
+        help="L2 regularization applied to the parameters.",
+    )
     return parser
 
 
 class LwFMC(ContinualModel):
-    NAME = 'lwf_mc'
-    COMPATIBILITY = ['class-il', 'task-il']
+    NAME = "lwf_mc"
+    COMPATIBILITY = ["class-il", "task-il"]
 
     def __init__(self, backbone, loss, args, transform):
         super(LwFMC, self).__init__(backbone, loss, args, transform)
         self.dataset = get_dataset(args)
 
         # Instantiate buffers
-        self.eye = torch.eye(self.dataset.N_CLASSES_PER_TASK *
-                             self.dataset.N_TASKS).to(self.device)
+        self.eye = torch.eye(self.dataset.N_CLASSES_PER_TASK * self.dataset.N_TASKS).to(
+            self.device
+        )
 
         self.class_means = None
         self.old_net = None
@@ -51,8 +56,13 @@ class LwFMC(ContinualModel):
 
         return loss.item()
 
-    def get_loss(self, inputs: torch.Tensor, labels: torch.Tensor,
-                 task_idx: int, logits: torch.Tensor) -> torch.Tensor:
+    def get_loss(
+        self,
+        inputs: torch.Tensor,
+        labels: torch.Tensor,
+        task_idx: int,
+        logits: torch.Tensor,
+    ) -> torch.Tensor:
         """
         Computes the loss tensor.
         :param inputs: the images to be fed to the network
@@ -85,4 +95,3 @@ class LwFMC(ContinualModel):
         self.old_net = deepcopy(self.net.eval())
         self.net.train()
         self.current_task += 1
-    

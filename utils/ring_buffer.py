@@ -25,10 +25,15 @@ class RingBuffer:
         self.device = device
         self.task_number = 0
         self.num_seen_examples = 0
-        self.attributes = ['examples', 'labels', 'logits', 'task_labels']
+        self.attributes = ["examples", "labels", "logits", "task_labels"]
 
-    def init_tensors(self, examples: torch.Tensor, labels: torch.Tensor,
-                     logits: torch.Tensor, task_labels: torch.Tensor) -> None:
+    def init_tensors(
+        self,
+        examples: torch.Tensor,
+        labels: torch.Tensor,
+        logits: torch.Tensor,
+        task_labels: torch.Tensor,
+    ) -> None:
         """
         Initializes just the required tensors.
         :param examples: tensor containing the images
@@ -39,9 +44,16 @@ class RingBuffer:
         for attr_str in self.attributes:
             attr = eval(attr_str)
             if attr is not None and not hasattr(self, attr_str):
-                typ = torch.int64 if attr_str.endswith('els') else torch.float32
-                setattr(self, attr_str, torch.zeros((self.buffer_size,
-                        *attr.shape[1:]), dtype=typ, device=self.device))
+                typ = torch.int64 if attr_str.endswith("els") else torch.float32
+                setattr(
+                    self,
+                    attr_str,
+                    torch.zeros(
+                        (self.buffer_size, *attr.shape[1:]),
+                        dtype=typ,
+                        device=self.device,
+                    ),
+                )
 
         self.labels -= 1
 
@@ -54,11 +66,13 @@ class RingBuffer:
         :param task_labels: tensor containing the task labels
         :return:
         """
-        if not hasattr(self, 'examples'):
+        if not hasattr(self, "examples"):
             self.init_tensors(examples, labels, logits, task_labels)
 
         for i in range(examples.shape[0]):
-            index = ring(self.num_seen_examples, self.buffer_portion_size, self.task_number)
+            index = ring(
+                self.num_seen_examples, self.buffer_portion_size, self.task_number
+            )
             self.num_seen_examples += 1
             if index >= 0:
                 self.examples[index] = examples[i].to(self.device)
@@ -83,9 +97,15 @@ class RingBuffer:
 
         choice = np.random.choice(populated_portion_length, size=size, replace=False)
         if transform is None:
-            def transform(x): return x
-        ret_tuple = (torch.stack([transform(ee.cpu())
-                                  for ee in self.examples[choice]]).to(self.device),)
+
+            def transform(x):
+                return x
+
+        ret_tuple = (
+            torch.stack([transform(ee.cpu()) for ee in self.examples[choice]]).to(
+                self.device
+            ),
+        )
         for attr_str in self.attributes[1:]:
             if hasattr(self, attr_str):
                 attr = getattr(self, attr_str)
@@ -109,9 +129,13 @@ class RingBuffer:
         :return: a tuple with all the items in the memory buffer
         """
         if transform is None:
-            def transform(x): return x
-        ret_tuple = (torch.stack([transform(ee.cpu())
-                                  for ee in self.examples]).to(self.device),)
+
+            def transform(x):
+                return x
+
+        ret_tuple = (
+            torch.stack([transform(ee.cpu()) for ee in self.examples]).to(self.device),
+        )
         for attr_str in self.attributes[1:]:
             if hasattr(self, attr_str):
                 attr = getattr(self, attr_str)

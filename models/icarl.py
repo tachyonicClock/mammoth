@@ -10,13 +10,18 @@ import torch.nn.functional as F
 from datasets import get_dataset
 
 from models.utils.continual_model import ContinualModel
-from utils.args import add_management_args, add_experiment_args, add_rehearsal_args, ArgumentParser
+from utils.args import (
+    add_management_args,
+    add_experiment_args,
+    add_rehearsal_args,
+    ArgumentParser,
+)
 from utils.batch_norm import bn_track_stats
 from utils.buffer import Buffer, icarl_replay
 
 
 def get_parser() -> ArgumentParser:
-    parser = ArgumentParser(description='Continual Learning via iCaRL.')
+    parser = ArgumentParser(description="Continual Learning via iCaRL.")
 
     add_management_args(parser)
     add_experiment_args(parser)
@@ -44,20 +49,26 @@ def fill_buffer(self, mem_buffer: Buffer, dataset, t_idx: int) -> None:
 
         mem_buffer.empty()
         for _y in buf_y.unique():
-            idx = (buf_y == _y)
+            idx = buf_y == _y
             _y_x, _y_y, _y_l = buf_x[idx], buf_y[idx], buf_l[idx]
             mem_buffer.add_data(
                 examples=_y_x[:samples_per_class],
                 labels=_y_y[:samples_per_class],
-                logits=_y_l[:samples_per_class]
+                logits=_y_l[:samples_per_class],
             )
 
     # 2) Then, fill with current tasks
     loader = dataset.train_loader
     norm_trans = dataset.get_normalization_transform()
     if norm_trans is None:
-        def norm_trans(x): return x
-    classes_start, classes_end = t_idx * dataset.N_CLASSES_PER_TASK, (t_idx + 1) * dataset.N_CLASSES_PER_TASK
+
+        def norm_trans(x):
+            return x
+
+    classes_start, classes_end = (
+        t_idx * dataset.N_CLASSES_PER_TASK,
+        (t_idx + 1) * dataset.N_CLASSES_PER_TASK,
+    )
 
     # 2.1 Extract all features
     a_x, a_y, a_f, a_l = [], [], [], []
@@ -67,9 +78,9 @@ def fill_buffer(self, mem_buffer: Buffer, dataset, t_idx: int) -> None:
         if not x.size(0):
             continue
         x, y, not_norm_x = (a.to(self.device) for a in (x, y, not_norm_x))
-        a_x.append(not_norm_x.to('cpu'))
-        a_y.append(y.to('cpu'))
-        feats = self.net(norm_trans(not_norm_x), returnt='features')
+        a_x.append(not_norm_x.to("cpu"))
+        a_y.append(y.to("cpu"))
+        feats = self.net(norm_trans(not_norm_x), returnt="features")
         outs = self.net.classifier(feats)
         a_f.append(feats.cpu())
         a_l.append(torch.sigmoid(outs).cpu())
@@ -77,7 +88,7 @@ def fill_buffer(self, mem_buffer: Buffer, dataset, t_idx: int) -> None:
 
     # 2.2 Compute class means
     for _y in a_y.unique():
-        idx = (a_y == _y)
+        idx = a_y == _y
         _x, _y, _l = a_x[idx], a_y[idx], a_l[idx]
         feats = a_f[idx]
         mean_feat = feats.mean(0, keepdim=True)
@@ -90,12 +101,12 @@ def fill_buffer(self, mem_buffer: Buffer, dataset, t_idx: int) -> None:
             idx_min = cost.argmin().item()
 
             mem_buffer.add_data(
-                examples=_x[idx_min:idx_min + 1].to(self.device),
-                labels=_y[idx_min:idx_min + 1].to(self.device),
-                logits=_l[idx_min:idx_min + 1].to(self.device)
+                examples=_x[idx_min : idx_min + 1].to(self.device),
+                labels=_y[idx_min : idx_min + 1].to(self.device),
+                logits=_l[idx_min : idx_min + 1].to(self.device),
             )
 
-            running_sum += feats[idx_min:idx_min + 1]
+            running_sum += feats[idx_min : idx_min + 1]
             feats[idx_min] = feats[idx_min] + 1e6
             i += 1
 
@@ -106,8 +117,8 @@ def fill_buffer(self, mem_buffer: Buffer, dataset, t_idx: int) -> None:
 
 
 class ICarl(ContinualModel):
-    NAME = 'icarl'
-    COMPATIBILITY = ['class-il', 'task-il']
+    NAME = "icarl"
+    COMPATIBILITY = ["class-il", "task-il"]
 
     def __init__(self, backbone, loss, args, transform):
         super(ICarl, self).__init__(backbone, loss, args, transform)
@@ -115,8 +126,9 @@ class ICarl(ContinualModel):
 
         # Instantiate buffers
         self.buffer = Buffer(self.args.buffer_size, self.device)
-        self.eye = torch.eye(self.dataset.N_CLASSES_PER_TASK *
-                             self.dataset.N_TASKS).to(self.device)
+        self.eye = torch.eye(self.dataset.N_CLASSES_PER_TASK * self.dataset.N_TASKS).to(
+            self.device
+        )
 
         self.class_means = None
         self.old_net = None
@@ -128,7 +140,7 @@ class ICarl(ContinualModel):
                 self.compute_class_means()
                 self.class_means = self.class_means.squeeze()
 
-        feats = self.net(x, returnt='features')
+        feats = self.net(x, returnt="features")
         feats = feats.view(feats.size(0), -1)
         feats = feats.unsqueeze(1)
 
@@ -137,11 +149,13 @@ class ICarl(ContinualModel):
 
     def observe(self, inputs, labels, not_aug_inputs, logits=None):
 
-        if not hasattr(self, 'classes_so_far'):
-            self.register_buffer('classes_so_far', labels.unique().to('cpu'))
+        if not hasattr(self, "classes_so_far"):
+            self.register_buffer("classes_so_far", labels.unique().to("cpu"))
         else:
-            self.register_buffer('classes_so_far', torch.cat((
-                self.classes_so_far, labels.to('cpu'))).unique())
+            self.register_buffer(
+                "classes_so_far",
+                torch.cat((self.classes_so_far, labels.to("cpu"))).unique(),
+            )
 
         self.class_means = None
         if self.task > 0:
@@ -159,8 +173,13 @@ class ICarl(ContinualModel):
     def binary_cross_entropy(pred, y):
         return -(pred.log() * y + (1 - y) * (1 - pred).log()).mean()
 
-    def get_loss(self, inputs: torch.Tensor, labels: torch.Tensor,
-                 task_idx: int, logits: torch.Tensor) -> torch.Tensor:
+    def get_loss(
+        self,
+        inputs: torch.Tensor,
+        labels: torch.Tensor,
+        task_idx: int,
+        logits: torch.Tensor,
+    ) -> torch.Tensor:
         """
         Computes the loss tensor.
         :param inputs: the images to be fed to the network
@@ -207,16 +226,14 @@ class ICarl(ContinualModel):
         examples, labels, _ = self.buffer.get_all_data(transform)
         for _y in self.classes_so_far:
             x_buf = torch.stack(
-                [examples[i]
-                 for i in range(0, len(examples))
-                 if labels[i].cpu() == _y]
+                [examples[i] for i in range(0, len(examples)) if labels[i].cpu() == _y]
             ).to(self.device)
             with bn_track_stats(self, False):
                 allt = None
                 while len(x_buf):
-                    batch = x_buf[:self.args.batch_size]
-                    x_buf = x_buf[self.args.batch_size:]
-                    feats = self.net(batch, returnt='features').mean(0)
+                    batch = x_buf[: self.args.batch_size]
+                    x_buf = x_buf[self.args.batch_size :]
+                    feats = self.net(batch, returnt="features").mean(0)
                     if allt is None:
                         allt = feats
                     else:

@@ -21,6 +21,7 @@ try:
 except ImportError:
     wandb = None
 
+
 def mask_classes(outputs: torch.Tensor, dataset: ContinualDataset, k: int) -> None:
     """
     Given the output tensor, the dataset at hand and the current task,
@@ -30,12 +31,18 @@ def mask_classes(outputs: torch.Tensor, dataset: ContinualDataset, k: int) -> No
     :param dataset: the continual dataset
     :param k: the task index
     """
-    outputs[:, 0:k * dataset.N_CLASSES_PER_TASK] = -float('inf')
-    outputs[:, (k + 1) * dataset.N_CLASSES_PER_TASK:
-               dataset.N_TASKS * dataset.N_CLASSES_PER_TASK] = -float('inf')
+    outputs[:, 0 : k * dataset.N_CLASSES_PER_TASK] = -float("inf")
+    outputs[
+        :,
+        (k + 1)
+        * dataset.N_CLASSES_PER_TASK : dataset.N_TASKS
+        * dataset.N_CLASSES_PER_TASK,
+    ] = -float("inf")
 
 
-def evaluate(model: ContinualModel, dataset: ContinualDataset, last=False) -> Tuple[list, list]:
+def evaluate(
+    model: ContinualModel, dataset: ContinualDataset, last=False
+) -> Tuple[list, list]:
     """
     Evaluates the accuracy of the model for each past task.
     :param model: the model to be evaluated
@@ -54,7 +61,7 @@ def evaluate(model: ContinualModel, dataset: ContinualDataset, last=False) -> Tu
             with torch.no_grad():
                 inputs, labels = data
                 inputs, labels = inputs.to(model.device), labels.to(model.device)
-                if 'class-il' not in model.COMPATIBILITY:
+                if "class-il" not in model.COMPATIBILITY:
                     outputs = model(inputs, k)
                 else:
                     outputs = model(inputs)
@@ -63,21 +70,19 @@ def evaluate(model: ContinualModel, dataset: ContinualDataset, last=False) -> Tu
                 correct += torch.sum(pred == labels).item()
                 total += labels.shape[0]
 
-                if dataset.SETTING == 'class-il':
+                if dataset.SETTING == "class-il":
                     mask_classes(outputs, dataset, k)
                     _, pred = torch.max(outputs.data, 1)
                     correct_mask_classes += torch.sum(pred == labels).item()
 
-        accs.append(correct / total * 100
-                    if 'class-il' in model.COMPATIBILITY else 0)
+        accs.append(correct / total * 100 if "class-il" in model.COMPATIBILITY else 0)
         accs_mask_classes.append(correct_mask_classes / total * 100)
 
     model.net.train(status)
     return accs, accs_mask_classes
 
 
-def train(model: ContinualModel, dataset: ContinualDataset,
-          args: Namespace) -> None:
+def train(model: ContinualModel, dataset: ContinualDataset, args: Namespace) -> None:
     """
     The training process, including evaluations and loggers.
     :param model: the module to be trained
@@ -87,8 +92,12 @@ def train(model: ContinualModel, dataset: ContinualDataset,
     print(args)
 
     if not args.nowand:
-        assert wandb is not None, "Wandb not installed, please install it or run without wandb"
-        wandb.init(project=args.wandb_project, entity=args.wandb_entity, config=vars(args))
+        assert (
+            wandb is not None
+        ), "Wandb not installed, please install it or run without wandb"
+        wandb.init(
+            project=args.wandb_project, entity=args.wandb_entity, config=vars(args)
+        )
         args.wandb_url = wandb.run.get_url()
 
     model.net.to(model.device)
@@ -104,29 +113,29 @@ def train(model: ContinualModel, dataset: ContinualDataset,
         for t in range(dataset.N_TASKS):
             model.net.train()
             _, _ = dataset_copy.get_data_loaders()
-        if model.NAME != 'icarl' and model.NAME != 'pnn':
+        if model.NAME != "icarl" and model.NAME != "pnn":
             random_results_class, random_results_task = evaluate(model, dataset_copy)
 
     print(file=sys.stderr)
     for t in range(dataset.N_TASKS):
         model.net.train()
         train_loader, test_loader = dataset.get_data_loaders()
-        if hasattr(model, 'begin_task'):
+        if hasattr(model, "begin_task"):
             model.begin_task(dataset)
         if t and not args.ignore_other_metrics:
             accs = evaluate(model, dataset, last=True)
-            results[t-1] = results[t-1] + accs[0]
-            if dataset.SETTING == 'class-il':
-                results_mask_classes[t-1] = results_mask_classes[t-1] + accs[1]
+            results[t - 1] = results[t - 1] + accs[0]
+            if dataset.SETTING == "class-il":
+                results_mask_classes[t - 1] = results_mask_classes[t - 1] + accs[1]
 
         scheduler = dataset.get_scheduler(model, args)
         for epoch in range(model.args.n_epochs):
-            if args.model == 'joint':
+            if args.model == "joint":
                 continue
             for i, data in enumerate(train_loader):
                 if args.debug_mode and i > 3:
                     break
-                if hasattr(dataset.train_loader.dataset, 'logits'):
+                if hasattr(dataset.train_loader.dataset, "logits"):
                     inputs, labels, not_aug_inputs, logits = data
                     inputs = inputs.to(model.device)
                     labels = labels.to(model.device)
@@ -135,8 +144,7 @@ def train(model: ContinualModel, dataset: ContinualDataset,
                     loss = model.meta_observe(inputs, labels, not_aug_inputs, logits)
                 else:
                     inputs, labels, not_aug_inputs = data
-                    inputs, labels = inputs.to(model.device), labels.to(
-                        model.device)
+                    inputs, labels = inputs.to(model.device), labels.to(model.device)
                     not_aug_inputs = not_aug_inputs.to(model.device)
                     loss = model.meta_observe(inputs, labels, not_aug_inputs)
                 assert not math.isnan(loss)
@@ -145,7 +153,7 @@ def train(model: ContinualModel, dataset: ContinualDataset,
             if scheduler is not None:
                 scheduler.step()
 
-        if hasattr(model, 'end_task'):
+        if hasattr(model, "end_task"):
             model.end_task(dataset)
 
         accs = evaluate(model, dataset)
@@ -160,26 +168,28 @@ def train(model: ContinualModel, dataset: ContinualDataset,
             logger.log_fullacc(accs)
 
         if not args.nowand:
-            d2={'RESULT_class_mean_accs': mean_acc[0], 'RESULT_task_mean_accs': mean_acc[1],
-                **{f'RESULT_class_acc_{i}': a for i, a in enumerate(accs[0])},
-                **{f'RESULT_task_acc_{i}': a for i, a in enumerate(accs[1])}}
+            d2 = {
+                "RESULT_class_mean_accs": mean_acc[0],
+                "RESULT_task_mean_accs": mean_acc[1],
+                **{f"RESULT_class_acc_{i}": a for i, a in enumerate(accs[0])},
+                **{f"RESULT_task_acc_{i}": a for i, a in enumerate(accs[1])},
+            }
 
             wandb.log(d2)
-
-
 
     if not args.disable_log and not args.ignore_other_metrics:
         logger.add_bwt(results, results_mask_classes)
         logger.add_forgetting(results, results_mask_classes)
-        if model.NAME != 'icarl' and model.NAME != 'pnn':
-            logger.add_fwt(results, random_results_class,
-                    results_mask_classes, random_results_task)
+        if model.NAME != "icarl" and model.NAME != "pnn":
+            logger.add_fwt(
+                results, random_results_class, results_mask_classes, random_results_task
+            )
 
     if not args.disable_log:
         logger.write(vars(args))
         if not args.nowand:
             d = logger.dump()
-            d['wandb_url'] = wandb.run.get_url()
+            d["wandb_url"] = wandb.run.get_url()
             wandb.log(d)
 
     if not args.nowand:

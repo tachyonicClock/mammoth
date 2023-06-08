@@ -13,8 +13,9 @@ class AlphaModule(nn.Module):
         super(AlphaModule, self).__init__()
         if not isinstance(shape, tuple):
             shape = (shape,)
-        self.alpha = Parameter(torch.rand(tuple([1] + list(shape))) * 0.1,
-                               requires_grad=True)
+        self.alpha = Parameter(
+            torch.rand(tuple([1] + list(shape))) * 0.1, requires_grad=True
+        )
 
     def forward(self, x):
         return x * self.alpha
@@ -39,7 +40,7 @@ class ListModule(nn.Module):
         if idx < 0:
             idx += self.idx
         if idx >= len(self._modules):
-            raise IndexError('index {} is out of range'.format(idx))
+            raise IndexError("index {} is out of range".format(idx))
         it = iter(self._modules.values())
         for i in range(idx):
             next(it)

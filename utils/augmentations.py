@@ -11,7 +11,7 @@ import torch.nn.functional as F
 def rand_bbox(size, lam):
     W = size[2]
     H = size[3]
-    cut_rat = np.sqrt(1. - lam)
+    cut_rat = np.sqrt(1.0 - lam)
     cut_w = np.int(W * cut_rat)
     cut_h = np.int(H * cut_rat)
 
@@ -28,7 +28,7 @@ def rand_bbox(size, lam):
 
 
 def cutmix_data(x, y, alpha=1.0, cutmix_prob=0.5):
-    assert (alpha > 0)
+    assert alpha > 0
     # generate mixed sample
     lam = np.random.beta(alpha, alpha)
 
@@ -49,8 +49,9 @@ def cutmix_data(x, y, alpha=1.0, cutmix_prob=0.5):
 
 def normalize(x, mean, std):
     assert len(x.shape) == 4
-    return (x - torch.tensor(mean).unsqueeze(0).unsqueeze(2).unsqueeze(3).to(x.device)) \
-        / torch.tensor(std).unsqueeze(0).unsqueeze(2).unsqueeze(3).to(x.device)
+    return (
+        x - torch.tensor(mean).unsqueeze(0).unsqueeze(2).unsqueeze(3).to(x.device)
+    ) / torch.tensor(std).unsqueeze(0).unsqueeze(2).unsqueeze(3).to(x.device)
 
 
 def random_flip(x):
@@ -63,7 +64,17 @@ def random_flip(x):
 def random_grayscale(x, prob=0.2):
     assert len(x.shape) == 4
     mask = torch.rand(x.shape[0]) < prob
-    x[mask] = (x[mask] * torch.tensor([[0.299, 0.587, 0.114]]).unsqueeze(2).unsqueeze(2).to(x.device)).sum(1, keepdim=True).repeat_interleave(3, 1)
+    x[mask] = (
+        (
+            x[mask]
+            * torch.tensor([[0.299, 0.587, 0.114]])
+            .unsqueeze(2)
+            .unsqueeze(2)
+            .to(x.device)
+        )
+        .sum(1, keepdim=True)
+        .repeat_interleave(3, 1)
+    )
     return x
 
 
@@ -76,45 +87,52 @@ def random_crop(x, padding):
     crop_x_end, crop_y_end = crop_x_start + x.shape[-1], crop_y_start + x.shape[-2]
 
     oboe = F.pad(x, (padding, padding, padding, padding))
-    mask_x = torch.arange(x.shape[-1] + padding * 2).repeat(x.shape[0], x.shape[-1] + padding * 2, 1)
+    mask_x = torch.arange(x.shape[-1] + padding * 2).repeat(
+        x.shape[0], x.shape[-1] + padding * 2, 1
+    )
     mask_y = mask_x.transpose(1, 2)
-    mask_x = ((mask_x >= crop_x_start.unsqueeze(1).unsqueeze(2)) & (mask_x < crop_x_end.unsqueeze(1).unsqueeze(2)))
-    mask_y = ((mask_y >= crop_y_start.unsqueeze(1).unsqueeze(2)) & (mask_y < crop_y_end.unsqueeze(1).unsqueeze(2)))
-    return oboe[mask_x.unsqueeze(1).repeat(1, x.shape[1], 1, 1) * mask_y.unsqueeze(1).repeat(1, x.shape[1], 1, 1)].reshape(x.shape[0], 3, x.shape[2], x.shape[3])
+    mask_x = (mask_x >= crop_x_start.unsqueeze(1).unsqueeze(2)) & (
+        mask_x < crop_x_end.unsqueeze(1).unsqueeze(2)
+    )
+    mask_y = (mask_y >= crop_y_start.unsqueeze(1).unsqueeze(2)) & (
+        mask_y < crop_y_end.unsqueeze(1).unsqueeze(2)
+    )
+    return oboe[
+        mask_x.unsqueeze(1).repeat(1, x.shape[1], 1, 1)
+        * mask_y.unsqueeze(1).repeat(1, x.shape[1], 1, 1)
+    ].reshape(x.shape[0], 3, x.shape[2], x.shape[3])
 
 
-class soft_aug():
-
+class soft_aug:
     def __init__(self, mean, std):
         self.mean = mean
         self.std = std
 
     def __call__(self, x):
-        return normalize(
-            random_flip(
-                random_crop(x, 4)
-            ),
-            self.mean, self.std)
+        return normalize(random_flip(random_crop(x, 4)), self.mean, self.std)
 
 
-class strong_aug():
-
+class strong_aug:
     def __init__(self, size, mean, std):
         from torchvision import transforms
-        self.transform = transforms.Compose([
-            transforms.ToPILImage(),
-            transforms.RandomResizedCrop(size=size, scale=(0.2, 1.)),
-            transforms.RandomApply([
-                transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)
-            ], p=0.8),
-            transforms.ToTensor()
-        ])
+
+        self.transform = transforms.Compose(
+            [
+                transforms.ToPILImage(),
+                transforms.RandomResizedCrop(size=size, scale=(0.2, 1.0)),
+                transforms.RandomApply(
+                    [transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)], p=0.8
+                ),
+                transforms.ToTensor(),
+            ]
+        )
         self.mean = mean
         self.std = std
 
     def __call__(self, x):
         flip = random_flip(x)
-        return normalize(random_grayscale(
-            torch.stack(
-                [self.transform(a) for a in flip]
-            )), self.mean, self.std)
+        return normalize(
+            random_grayscale(torch.stack([self.transform(a) for a in flip])),
+            self.mean,
+            self.std,
+        )

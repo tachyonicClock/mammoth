@@ -17,8 +17,9 @@ from utils.magic import persistent_locals
 
 
 def get_parser() -> ArgumentParser:
-    parser = ArgumentParser(description='Continual Learning via'
-                                        ' Progressive Neural Networks.')
+    parser = ArgumentParser(
+        description="Continual Learning via" " Progressive Neural Networks."
+    )
     add_management_args(parser)
     add_experiment_args(parser)
     return parser
@@ -35,12 +36,14 @@ def get_backbone(bone, old_cols=None, x_shape=None):
     elif isinstance(bone, ResNet):
         return resnet18_pnn(bone.num_classes, bone.nf, old_cols, x_shape)
     else:
-        raise NotImplementedError('Progressive Neural Networks is not implemented for this backbone')
+        raise NotImplementedError(
+            "Progressive Neural Networks is not implemented for this backbone"
+        )
 
 
 class Pnn(nn.Module):
-    NAME = 'pnn'
-    COMPATIBILITY = ['task-il']
+    NAME = "pnn"
+    COMPATIBILITY = ["task-il"]
 
     def __init__(self, backbone, loss, args, transform):
         super(Pnn, self).__init__()
@@ -77,7 +80,11 @@ class Pnn(nn.Module):
             return
         self.task_idx += 1
         self.nets[-1].cpu()
-        self.nets.append(get_backbone(dataset.get_backbone(), self.nets, self.x_shape).to(self.device))
+        self.nets.append(
+            get_backbone(dataset.get_backbone(), self.nets, self.x_shape).to(
+                self.device
+            )
+        )
         self.net = self.nets[-1]
         self.opt = optim.SGD(self.net.parameters(), lr=self.args.lr)
 
@@ -92,10 +99,10 @@ class Pnn(nn.Module):
         self.opt.step()
 
         return loss.item()
-    
+
     # TODO: Copied from `continual_model.py`. Refactor to avoid code duplication.
     def meta_observe(self, *args, **kwargs):
-        if 'wandb' in sys.modules and not self.args.nowand:
+        if "wandb" in sys.modules and not self.args.nowand:
             pl = persistent_locals(self.observe)
             ret = pl(*args, **kwargs)
             self.autolog_wandb(pl.locals)
@@ -110,5 +117,10 @@ class Pnn(nn.Module):
         are automatically logged to wandb upon return if wandb is installed.
         """
         if not self.args.nowand and not self.args.debug_mode:
-            wandb.log({k: (v.item() if isinstance(v, torch.Tensor) and v.dim() == 0 else v)
-                      for k, v in locals.items() if k.startswith('_wandb_') or k.startswith('loss')})
+            wandb.log(
+                {
+                    k: (v.item() if isinstance(v, torch.Tensor) and v.dim() == 0 else v)
+                    for k, v in locals.items()
+                    if k.startswith("_wandb_") or k.startswith("loss")
+                }
+            )
