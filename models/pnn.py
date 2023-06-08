@@ -3,14 +3,17 @@
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 
+import sys
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import wandb
 from datasets import get_dataset
 from torch.optim import SGD
 
 from utils.args import add_management_args, add_experiment_args, ArgumentParser
 from utils.conf import get_device
+from utils.magic import persistent_locals
 
 
 def get_parser() -> ArgumentParser:
@@ -70,7 +73,7 @@ class Pnn(nn.Module):
 
     def end_task(self, dataset):
         # instantiate new column
-        if self.task_idx == 4:
+        if self.task_idx == dataset.N_TASKS - 1:
             return
         self.task_idx += 1
         self.nets[-1].cpu()
@@ -89,3 +92,23 @@ class Pnn(nn.Module):
         self.opt.step()
 
         return loss.item()
+    
+    # TODO: Copied from `continual_model.py`. Refactor to avoid code duplication.
+    def meta_observe(self, *args, **kwargs):
+        if 'wandb' in sys.modules and not self.args.nowand:
+            pl = persistent_locals(self.observe)
+            ret = pl(*args, **kwargs)
+            self.autolog_wandb(pl.locals)
+        else:
+            ret = self.observe(*args, **kwargs)
+        return ret
+
+    # TODO: Copied from `continual_model.py`. Refactor to avoid code duplication.
+    def autolog_wandb(self, locals):
+        """
+        All variables starting with "_wandb_" or "loss" in the observe function
+        are automatically logged to wandb upon return if wandb is installed.
+        """
+        if not self.args.nowand and not self.args.debug_mode:
+            wandb.log({k: (v.item() if isinstance(v, torch.Tensor) and v.dim() == 0 else v)
+                      for k, v in locals.items() if k.startswith('_wandb_') or k.startswith('loss')})

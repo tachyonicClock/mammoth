@@ -11,11 +11,14 @@ import torch.nn as nn
 import torch.optim
 from torch.utils.data import DataLoader, Dataset, Subset
 
+from datasets.utils.subset import MammothSubset
+
 
 class ContinualDataset:
     """
     Continual learning evaluation setting.
     """
+
     NAME: str
     SETTING: str
     N_CLASSES_PER_TASK: int
@@ -41,7 +44,9 @@ class ContinualDataset:
         print(f"{self.NAME} using substitution table {self.substitution_table} ")
 
         if not all((self.NAME, self.SETTING, self.N_CLASSES_PER_TASK, self.N_TASKS)):
-            raise NotImplementedError('The dataset must be initialized with all the required fields.')
+            raise NotImplementedError(
+                "The dataset must be initialized with all the required fields."
+            )
 
     def get_data_loaders(self) -> Tuple[DataLoader, DataLoader]:
         """
@@ -106,8 +111,9 @@ class ContinualDataset:
         raise NotImplementedError
 
 
-def store_masked_loaders(train_dataset: Dataset, test_dataset: Dataset,
-                         setting: ContinualDataset) -> Tuple[DataLoader, DataLoader]:
+def store_masked_loaders(
+    train_dataset: Dataset, test_dataset: Dataset, setting: ContinualDataset
+) -> Tuple[DataLoader, DataLoader]:
     """
     Divides the dataset into tasks.
     :param train_dataset: train dataset
@@ -115,25 +121,33 @@ def store_masked_loaders(train_dataset: Dataset, test_dataset: Dataset,
     :param setting: continual learning setting
     :return: train and test loaders
     """
-    train_mask = np.logical_and(np.array(train_dataset.targets) >= setting.i,
-                                np.array(train_dataset.targets) < setting.i + setting.N_CLASSES_PER_TASK)
-    test_mask = np.logical_and(np.array(test_dataset.targets) >= setting.i,
-                               np.array(test_dataset.targets) < setting.i + setting.N_CLASSES_PER_TASK)
+    train_mask = np.logical_and(
+        np.array(train_dataset.targets) >= setting.i,
+        np.array(train_dataset.targets) < setting.i + setting.N_CLASSES_PER_TASK,
+    )
+    test_mask = np.logical_and(
+        np.array(test_dataset.targets) >= setting.i,
+        np.array(test_dataset.targets) < setting.i + setting.N_CLASSES_PER_TASK,
+    )
 
     train_idx = np.where(train_mask)[0]
-    task_train_subset = Subset(train_dataset, train_idx)
-    task_train_subset.data = train_dataset.data[train_mask]
-    task_train_subset.targets = np.array(train_dataset.targets)[train_mask]
+    task_train_subset = MammothSubset(train_dataset, train_idx)
 
     test_idx = np.where(test_mask)[0]
-    task_test_subset = Subset(test_dataset, test_idx)
-    task_test_subset.data = test_dataset.data[test_mask]
-    task_test_subset.targets = np.array(test_dataset.targets)[test_mask]
+    task_test_subset = MammothSubset(test_dataset, test_idx)
 
-    train_loader = DataLoader(task_train_subset,
-                              batch_size=setting.args.batch_size, shuffle=True, num_workers=4)
-    test_loader = DataLoader(task_test_subset,
-                             batch_size=setting.args.batch_size, shuffle=False, num_workers=4)
+    train_loader = DataLoader(
+        task_train_subset,
+        batch_size=setting.args.batch_size,
+        shuffle=True,
+        num_workers=4,
+    )
+    test_loader = DataLoader(
+        task_test_subset,
+        batch_size=setting.args.batch_size,
+        shuffle=False,
+        num_workers=4,
+    )
     setting.test_loaders.append(test_loader)
     setting.train_loader = train_loader
 
@@ -141,8 +155,9 @@ def store_masked_loaders(train_dataset: Dataset, test_dataset: Dataset,
     return train_loader, test_loader
 
 
-def get_previous_train_loader(train_dataset: Dataset, batch_size: int,
-                              setting: ContinualDataset) -> DataLoader:
+def get_previous_train_loader(
+    train_dataset: Dataset, batch_size: int, setting: ContinualDataset
+) -> DataLoader:
     """
     Creates a dataloader for the previous task.
     :param train_dataset: the entire training set
@@ -150,9 +165,11 @@ def get_previous_train_loader(train_dataset: Dataset, batch_size: int,
     :param setting: the continual dataset at hand
     :return: a dataloader
     """
-    train_mask = np.logical_and(np.array(train_dataset.targets) >=
-                                setting.i - setting.N_CLASSES_PER_TASK, np.array(train_dataset.targets)
-                                < setting.i - setting.N_CLASSES_PER_TASK + setting.N_CLASSES_PER_TASK)
+    train_mask = np.logical_and(
+        np.array(train_dataset.targets) >= setting.i - setting.N_CLASSES_PER_TASK,
+        np.array(train_dataset.targets)
+        < setting.i - setting.N_CLASSES_PER_TASK + setting.N_CLASSES_PER_TASK,
+    )
 
     train_dataset.data = train_dataset.data[train_mask]
     train_dataset.targets = np.array(train_dataset.targets)[train_mask]
