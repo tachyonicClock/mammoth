@@ -1,3 +1,4 @@
+from argparse import Namespace
 import os
 import typing as t
 from random import shuffle
@@ -253,6 +254,12 @@ class SequentialPAMAP(ContinualDataset):
         else:
             test_dataset = PAMAP2(base_path_dataset(), train=False)
 
+        for dataset in [train_dataset, test_dataset]:
+            # Perform a substitution to shuffle the class order
+            dataset.targets = np.array(
+                [self.substitution_table[y] for y in dataset.targets]
+            )
+
         train, test = store_masked_loaders(train_dataset, test_dataset, self)
         return train, test
 
@@ -296,12 +303,28 @@ class SequentialDSADS(ContinualDataset):
     N_TASKS = 9
     TRANSFORM = None
 
+    def __init__(self, args: Namespace) -> None:
+        super().__init__(args)
+        self.substitution_table = np.arange(19, dtype=int)
+        if self.args.shuffle_classes:
+            np.random.shuffle(self.substitution_table)
+
     def get_data_loaders(self):
         train_dataset = DSADS(base_path_dataset(), train=True)
         if self.args.validation:
             train_dataset, test_dataset = get_train_val(train_dataset, None, self.NAME)
         else:
             test_dataset = DSADS(base_path_dataset(), train=False)
+
+        # Remove the last class because DSADS has 19 classes and we want 18
+        # classes so that we can have 9 tasks with 2 classes each.
+        for dataset in [train_dataset, test_dataset]:
+            # Perform a substitution to shuffle the class order
+            dataset.targets = np.array(
+                [self.substitution_table[y] for y in dataset.targets]
+            )
+            dataset.data = dataset.data[dataset.targets != 18]
+            dataset.targets = dataset.targets[dataset.targets != 18]
 
         train, test = store_masked_loaders(train_dataset, test_dataset, self)
         return train, test

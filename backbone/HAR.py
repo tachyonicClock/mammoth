@@ -1,6 +1,8 @@
 from torch import nn, Tensor
 import math
 
+from backbone import MammothBackbone, xavier
+
 
 def _mlp_layer(in_features: int, out_features: int, dropout: float):
     return nn.Sequential(
@@ -8,7 +10,7 @@ def _mlp_layer(in_features: int, out_features: int, dropout: float):
     )
 
 
-class SimpleMLP(nn.Module):
+class SimpleMLP(MammothBackbone):
     """
     MLPEncoder implements a multi-layer perceptron encoder for an autoencoder.
     """
@@ -47,11 +49,27 @@ class SimpleMLP(nn.Module):
             features_out = int(features_out / layer_growth)
 
         layers.append(nn.Linear(features_in, latent_size))
-        layers.append(nn.Linear(latent_size, n_classes))
+        self.classifier = nn.Linear(latent_size, n_classes)
         self.layers = nn.Sequential(*layers)
 
-    def forward(self, x: Tensor) -> Tensor:
-        return self.layers(x)
+    def forward(self, x: Tensor, returnt="out") -> Tensor:
+        feats = self.layers(x)
+
+        if returnt == "features":
+            return feats
+
+        out = self.classifier(feats)
+        if returnt == "out":
+            return out
+        elif returnt == "all":
+            return (out, feats)
+        raise NotImplementedError("Unknown return type")
+
+    def reset_parameters(self) -> None:
+        """
+        Calls the Xavier parameter initialization function.
+        """
+        self.net.apply(xavier)
 
 
 def PAMAP2_mlp():
@@ -73,6 +91,6 @@ def DSADS_mlp():
         width=512,
         layer_count=5,
         dropout=0.1,
-        n_classes=19,
+        n_classes=18,
         layer_growth=1.0,
     )
